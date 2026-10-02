@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICCT Colleges Official Academic Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        icct: { 50: '#eef2ff', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full font-sans text-slate-100 antialiased selection:bg-indigo-500 selection:text-white flex flex-col">
+
+    <!-- App Container -->
+    <div id="app" class="flex-1 flex flex-col min-h-screen">
+        
+        <!-- Navbar -->
+        <header class="bg-indigo-950 border-b border-indigo-900/60 px-4 sm:px-6 py-4 flex items-center justify-between shadow-lg sticky top-0 z-50">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-black tracking-wider text-white text-sm sm:text-base flex items-center gap-2 flex-wrap">
+                        ICCT COLLEGES <span class="text-[10px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-bold uppercase">Portal</span>
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-indigo-300">Higher Education Academic & Attendance Portal</p>
+                </div>
+            </div>
+            <div id="user-nav-area" class="hidden items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p id="nav-user-name" class="text-xs sm:text-sm font-bold text-white"></p>
+                    <p id="nav-user-role" class="text-[10px] text-indigo-300"></p>
+                </div>
+                <button onclick="logout()" class="bg-indigo-900/80 hover:bg-red-600/80 text-indigo-200 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-indigo-700/50">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">Sign Out</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dynamic View Area -->
+        <main class="flex-1 flex flex-col bg-slate-900/50">
+            <!-- Loading Overlay -->
+            <div id="global-loader" class="hidden fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+                <div class="text-center p-4">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl sm:text-4xl text-amber-400 mb-3"></i>
+                    <p class="text-xs sm:text-sm font-medium text-indigo-200">Processing Supabase Request...</p>
+                </div>
+            </div>
+
+            <!-- Toast Alert Box -->
+            <div id="toast-container" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 max-w-sm ml-auto"></div>
+
+            <!-- VIEW 1: LOGIN PORTAL -->
+            <section id="view-login" class="flex-1 flex items-center justify-center p-4 sm:p-6">
+                <div class="w-full max-w-md bg-indigo-950/40 border border-indigo-900/50 backdrop-blur-md rounded-2xl shadow-2xl p-6 sm:p-8">
+                    <div class="text-center mb-6">
+                        <div class="inline-flex p-3 rounded-2xl bg-indigo-900/50 text-amber-400 mb-2 border border-indigo-800/40">
+                            <i class="fa-solid fa-shield-halved text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h2 class="text-lg sm:text-xl font-black text-white">ICCT SECURE LOGIN</h2>
+                        <p class="text-xs text-indigo-300 mt-1">Official Database Enrollment & Faculty Verification</p>
+                    </div>
+
+                    <!-- Role Switch Tabs -->
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-indigo-900/50 rounded-xl mb-6 border border-indigo-800/40">
+                        <button onclick="switchLoginRole('student')" id="tab-student" class="py-2.5 text-xs font-bold rounded-lg transition bg-amber-500 text-slate-950 shadow">
+                            <i class="fa-solid fa-user-graduate mr-1"></i> Student
+                        </button>
+                        <button onclick="switchLoginRole('teacher')" id="tab-teacher" class="py-2.5 text-xs font-bold rounded-lg transition text-indigo-300 hover:text-white">
+                            <i class="fa-solid fa-chalkboard-user mr-1"></i> Faculty
+                        </button>
+                    </div>
+
+                    <!-- STUDENT LOGIN FORM -->
+                    <form id="form-student" onsubmit="handleStudentLogin(event); return false;" class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1">Full Legal Name (Official Match)</label>
+                            <input type="text" id="stud-name" required placeholder="e.g. ISABEL PEREZ" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 uppercase">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1">Course / Degree</label>
+                                <select id="stud-course" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                                    <option value="BS Information Technology">BS Information Technology</option>
+                                    <option value="BS Computer Science">BS Computer Science</option>
+                                    <option value="BS Business Administration">BS Business Administration</option>
+                                    <option value="BS Criminology">BS Criminology</option>
+                                    <option value="BS Education">BS Education</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1">Year Level</label>
+                                <select id="stud-year" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                                    <option value="1st Year">1st Year</option>
+                                    <option value="2nd Year">2nd Year</option>
+                                    <option value="3rd Year" selected>3rd Year</option>
+                                    <option value="4th Year">4th Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg text-xs sm:text-sm tracking-wide">
+                            VERIFY & VIEW PORTAL
+                        </button>
+                    </form>
+
+                    <!-- TEACHER LOGIN FORM -->
+                    <form id="form-teacher" onsubmit="handleTeacherLogin(event); return false;" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1">Faculty Full Name</label>
+                            <input type="text" id="teach-name" required placeholder="e.g. ENGR. ARNEL BUSTAMANTE" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1">Employee ID Number</label>
+                            <input type="text" id="teach-id" required placeholder="e.g. ICCT-T-2041" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 uppercase">
+                        </div>
+                        <button type="submit" class="w-full mt-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 text-white font-black py-3 rounded-xl transition shadow-lg text-xs sm:text-sm tracking-wide">
+                            VERIFY FACULTY ACCESS
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- VIEW 2: STUDENT DASHBOARD -->
+            <section id="view-student" class="hidden flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-indigo-950/60 border border-indigo-900/50 p-6 rounded-2xl shadow-xl">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Student Dashboard</span>
+                        <h2 id="stud-welcome-name" class="text-xl sm:text-2xl font-black text-white mt-2">Welcome</h2>
+                        <p id="stud-welcome-meta" class="text-xs text-indigo-300 mt-1"></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-900/50 border border-indigo-800/40 px-4 py-2.5 rounded-xl text-center flex-1 sm:flex-initial">
+                            <p class="text-[10px] uppercase font-bold text-indigo-300">GPA</p>
+                            <p id="stud-gpa" class="text-lg sm:text-xl font-black text-amber-400">0.00</p>
+                        </div>
+                        <div class="bg-indigo-900/50 border border-indigo-800/40 px-4 py-2.5 rounded-xl text-center flex-1 sm:flex-initial">
+                            <p class="text-[10px] uppercase font-bold text-indigo-300">Monthly Attendance</p>
+                            <p id="stud-att-rate" class="text-lg sm:text-xl font-black text-emerald-400">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                            <h3 class="text-sm sm:text-base font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-marker text-amber-400"></i> Academic Grade Breakdowns & Assigned Instructor
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs sm:text-sm">
+                                    <thead class="bg-indigo-900/40 uppercase text-indigo-300 border-b border-indigo-800/40">
+                                        <tr>
+                                            <th class="p-3">Subject / Teacher</th>
+                                            <th class="p-3">Prelim</th>
+                                            <th class="p-3">Midterm</th>
+                                            <th class="p-3">Semi-Finals</th>
+                                            <th class="p-3">Finals</th>
+                                            <th class="p-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stud-grades-table-body" class="divide-y divide-indigo-900/30"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-calendar-days text-emerald-400"></i> Daily Attendance Ledger
+                                </h3>
+                                <div>
+                                    <select id="student-month-select" onchange="renderStudentAttendance()" class="bg-indigo-900/50 border border-indigo-800/60 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+                                        <option value="2026-08">August 2026</option>
+                                        <option value="2026-09">September 2026</option>
+                                        <option value="2026-10" selected>October 2026</option>
+                                        <option value="2026-11">November 2026</option>
+                                        <option value="2026-12">December 2026</option>
+                                        <option value="2027-01">January 2027</option>
+                                        <option value="2027-02">February 2027</option>
+                                        <option value="2027-03">March 2027</option>
+                                        <option value="2027-04">April 2027</option>
+                                        <option value="2027-05">May 2027</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="stud-attendance-grid" class="grid grid-cols-5 sm:grid-cols-7 gap-2 max-h-60 overflow-y-auto pr-1"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                            <h3 class="text-sm sm:text-base font-bold text-white mb-4">Performance Radar</h3>
+                            <div class="relative h-56 flex items-center justify-center">
+                                <canvas id="studentRadarChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                            <h3 class="text-sm sm:text-base font-bold text-white mb-2">Instructor Feedback</h3>
+                            <p id="stud-remarks-box" class="text-xs text-indigo-200 bg-indigo-900/30 p-3 rounded-xl border border-indigo-800/40 italic">Loading remarks...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: TEACHER DASHBOARD -->
+            <section id="view-teacher" class="hidden flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-indigo-950/60 border border-indigo-900/50 p-6 rounded-2xl shadow-xl">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">Faculty Dashboard</span>
+                        <h2 id="teach-welcome-name" class="text-xl sm:text-2xl font-black text-white mt-2">Welcome Professor</h2>
+                        <p id="teach-welcome-meta" class="text-xs text-indigo-300 mt-1"></p>
+                    </div>
+                    <!-- Attendance Metrics Overview -->
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-900/50 border border-indigo-800/40 px-4 py-2.5 rounded-xl text-center">
+                            <p class="text-[10px] uppercase font-bold text-indigo-300">Total Enrolled</p>
+                            <p id="teach-total-students" class="text-lg sm:text-xl font-black text-amber-400">0</p>
+                        </div>
+                        <div class="bg-indigo-900/50 border border-indigo-800/40 px-4 py-2.5 rounded-xl text-center">
+                            <p class="text-[10px] uppercase font-bold text-indigo-300">Avg Class Attendance</p>
+                            <p id="teach-avg-attendance" class="text-lg sm:text-xl font-black text-emerald-400">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NAVIGATION TABS INSIDE TEACHER DASHBOARD -->
+                <div class="flex gap-2 border-b border-indigo-900/60 pb-3">
+                    <button onclick="switchTeacherTab('roster')" id="teach-tab-roster" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition shadow">
+                        <i class="fa-solid fa-users mr-1"></i> Class Roster & Grades
+                    </button>
+                    <button onclick="switchTeacherTab('attendance')" id="teach-tab-attendance" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-900/50 text-indigo-300 hover:text-white transition border border-indigo-800/40">
+                        <i class="fa-solid fa-calendar-check mr-1"></i> Daily Attendance Sheet
+                    </button>
+                </div>
+
+                <!-- TAB CONTENT 1: ROSTER -->
+                <div id="teacher-content-roster" class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users-rectangle text-amber-400"></i> Managed Class Roster & Monitoring
+                        </h3>
+                        <div class="w-full sm:w-72">
+                            <input type="text" id="teacher-search" oninput="filterTeacherRoster()" placeholder="Search student name..." class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-indigo-900/40 uppercase text-indigo-300 border-b border-indigo-800/40">
+                                <tr>
+                                    <th class="p-3">Student Name</th>
+                                    <th class="p-3">Course / Level</th>
+                                    <th class="p-3">Subject</th>
+                                    <th class="p-3">Attendance Rate</th>
+                                    <th class="p-3">Prelim</th>
+                                    <th class="p-3">Midterm</th>
+                                    <th class="p-3">Semi-Finals</th>
+                                    <th class="p-3">Finals</th>
+                                    <th class="p-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-roster-tbody" class="divide-y divide-indigo-900/30"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB CONTENT 2: DAILY ATTENDANCE SHEET -->
+                <div id="teacher-content-attendance" class="hidden bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-4 sm:p-6 shadow-xl space-y-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-indigo-900/30 p-4 rounded-xl border border-indigo-800/40">
+                        <div>
+                            <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-day text-emerald-400"></i> Daily Class Sheet Manager
+                            </h3>
+                            <p class="text-xs text-indigo-300 mt-1">Mark attendance status for all students for a selected calendar date.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Attendance Date</label>
+                                <input type="date" id="daily-sheet-date" onchange="renderDailyAttendanceSheet()" class="bg-indigo-900/50 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+                            </div>
+                            <div class="pt-4">
+                                <button onclick="saveBulkAttendanceSheet()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition shadow">
+                                    <i class="fa-solid fa-floppy-disk mr-1"></i> Save Sheet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-indigo-900/40 uppercase text-indigo-300 border-b border-indigo-800/40">
+                                <tr>
+                                    <th class="p-3">Student Name</th>
+                                    <th class="p-3">Course / Year</th>
+                                    <th class="p-3 text-center">Status Selection (Present / Absent / Excused)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-attendance-sheet-tbody" class="divide-y divide-indigo-900/30"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <div id="modal-edit-student" class="hidden fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-indigo-950 border border-indigo-900/60 w-full max-w-lg rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-base sm:text-lg font-black text-white mb-4 flex items-center justify-between">
+                <span><i class="fa-solid fa-pen-to-square text-amber-400"></i> Edit Student Grades & Feedback</span>
+                <button onclick="closeEditModal()" class="text-indigo-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </h3>
+            <form id="form-edit-record" onsubmit="saveStudentRecord(event); return false;" class="space-y-4">
+                <input type="hidden" id="edit-stud-id">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Prelim</label>
+                        <input type="number" step="0.1" min="0" max="100" id="edit-prelim" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Midterm</label>
+                        <input type="number" step="0.1" min="0" max="100" id="edit-midterm" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Semi-Finals</label>
+                        <input type="number" step="0.1" min="0" max="100" id="edit-semi" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Finals</label>
+                        <input type="number" step="0.1" min="0" max="100" id="edit-finals" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-indigo-300 uppercase mb-1">Instructor Feedback</label>
+                    <input type="text" id="edit-remarks" class="w-full bg-indigo-900/40 border border-indigo-800/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400">
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="bg-indigo-900/50 text-indigo-300 px-4 py-2 rounded-xl text-xs font-semibold">Cancel</button>
+                    <button type="submit" class="bg-amber-500 text-slate-950 px-5 py-2 rounded-xl text-xs font-black shadow">Save Grades</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION SCRIPT -->
+    <script>
+        const SUPABASE_URL = 'https://zpmojzioprdvzexmxipy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbW9qemlvcHJkdnpleG14aXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MDE0MjIsImV4cCI6MjEwNjQ3NzQyMn0.g8XB9lzodlZx2l3s-NKGMiRQNVlJ3ffg7brdI8NTtKg';
+
+        let supabaseClient = null;
+        try {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error("Supabase Initialization Error", e);
+        }
+
+        let currentUser = null;
+        let currentRole = 'student';
+        let allStudentsCache = [];
+        let radarChartInstance = null;
+
+        function switchLoginRole(role) {
+            currentRole = role;
+            if (role === 'student') {
+                document.getElementById('form-student').classList.remove('hidden');
+                document.getElementById('form-teacher').classList.add('hidden');
+                document.getElementById('tab-student').className = "py-2.5 text-xs font-bold rounded-lg transition bg-amber-500 text-slate-950 shadow";
+                document.getElementById('tab-teacher').className = "py-2.5 text-xs font-bold rounded-lg transition text-indigo-300 hover:text-white";
+            } else {
+                document.getElementById('form-student').classList.add('hidden');
+                document.getElementById('form-teacher').classList.remove('hidden');
+                document.getElementById('tab-teacher').className = "py-2.5 text-xs font-bold rounded-lg transition bg-indigo-600 text-white shadow";
+                document.getElementById('tab-student').className = "py-2.5 text-xs font-bold rounded-lg transition text-indigo-300 hover:text-white";
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-xl text-xs font-bold shadow-xl border flex items-center gap-2 transition animate-fade-in ${type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' : 'bg-red-950/90 border-red-500/50 text-red-200'}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-triangle-exclamation text-red-400'}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function toggleLoader(show) {
+            const loader = document.getElementById('global-loader');
+            if (show) loader.classList.remove('hidden');
+            else loader.classList.add('hidden');
+        }
+
+        async function handleStudentLogin(e) {
+            e.preventDefault();
+            if (!supabaseClient) {
+                showToast("Please check Supabase configuration.", "error");
+                return false;
+            }
+
+            let rawName = document.getElementById('stud-name').value.trim().toUpperCase();
+            const course = document.getElementById('stud-course').value;
+            const year = document.getElementById('stud-year').value;
+
+            toggleLoader(true);
+            try {
+                const { data, error } = await supabaseClient
+                    .from('icct_students')
+                    .select('*')
+                    .ilike('full_name', `%${rawName}%`)
+                    .eq('course', course)
+                    .eq('year_level', year);
+
+                toggleLoader(false);
+
+                if (error || !data || data.length === 0) {
+                    showToast("Access Denied: Name not found in official roster for this course/level.", "error");
+                    return false;
+                }
+
+                currentUser = data[0];
+                enterStudentDashboard();
+                showToast("Successfully authenticated.");
+            } catch (err) {
+                toggleLoader(false);
+                showToast("Database connection error.", "error");
+            }
+            return false;
+        }
+
+        async function handleTeacherLogin(e) {
+            e.preventDefault();
+            if (!supabaseClient) {
+                showToast("Please check Supabase configuration.", "error");
+                return false;
+            }
+
+            const name = document.getElementById('teach-name').value.trim().toUpperCase();
+            const empId = document.getElementById('teach-id').value.trim().toUpperCase();
+
+            toggleLoader(true);
+            try {
+                const { data, error } = await supabaseClient
+                    .from('icct_teachers')
+                    .select('*')
+                    .ilike('full_name', `%${name}%`)
+                    .eq('employee_id', empId)
+                    .single();
+
+                toggleLoader(false);
+
+                if (error || !data) {
+                    showToast("Access Denied: Invalid Faculty Roster Credentials.", "error");
+                    return false;
+                }
+
+                currentUser = data;
+                enterTeacherDashboard();
+                showToast("Faculty authentication successful.");
+            } catch (err) {
+                toggleLoader(false);
+                showToast("Database connection error.", "error");
+            }
+            return false;
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('user-nav-area').classList.add('hidden');
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('view-student').classList.add('hidden');
+            document.getElementById('view-teacher').classList.add('hidden');
+            showToast("Signed out successfully.");
+        }
+
+        async function enterStudentDashboard() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-student').classList.remove('hidden');
+            document.getElementById('user-nav-area').classList.remove('hidden');
+            document.getElementById('nav-user-name').innerText = currentUser.full_name;
+            document.getElementById('nav-user-role').innerText = `${currentUser.course} - ${currentUser.year_level}`;
+
+            document.getElementById('stud-welcome-name').innerText = `Welcome, ${currentUser.full_name}`;
+            document.getElementById('stud-welcome-meta').innerText = `Enrolled Student | Major Subject: ${currentUser.subject}`;
+            document.getElementById('stud-remarks-box').innerText = currentUser.remarks || "No instructor remarks yet.";
+
+            const avg = (Number(currentUser.prelim) + Number(currentUser.midterm) + Number(currentUser.semi_finals) + Number(currentUser.finals)) / 4;
+            document.getElementById('stud-gpa').innerText = avg.toFixed(2);
+
+            const tbody = document.getElementById('stud-grades-table-body');
+            tbody.innerHTML = `
+                <tr>
+                    <td class="p-3">
+                        <p class="font-bold text-indigo-200">${currentUser.subject}</p>
+                        <p class="text-[10px] text-amber-400"><i class="fa-solid fa-chalkboard-user"></i> Instructor: ${currentUser.teacher_name}</p>
+                    </td>
+                    <td class="p-3">${currentUser.prelim}</td>
+                    <td class="p-3">${currentUser.midterm}</td>
+                    <td class="p-3">${currentUser.semi_finals}</td>
+                    <td class="p-3">${currentUser.finals}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">${avg >= 75 ? 'PASSED' : 'INCOMPLETE'}</span></td>
+                </tr>
+            `;
+
+            renderStudentAttendance();
+            renderRadarChart([currentUser.prelim, currentUser.midterm, currentUser.semi_finals, currentUser.finals]);
+        }
+
+        function renderStudentAttendance() {
+            const selectedYM = document.getElementById('student-month-select').value;
+            const [year, month] = selectedYM.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            const attGrid = document.getElementById('stud-attendance-grid');
+            attGrid.innerHTML = '';
+            let presentCount = 0;
+            let totalRecordedDays = 0;
+            const attData = currentUser.attendance || {};
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const status = attData[dateKey];
+
+                let badgeColor = 'bg-slate-900/40 text-slate-500 border-slate-800/40';
+                let displayStatus = 'No Record';
+
+                if (status) {
+                    totalRecordedDays++;
+                    if (status === 'Present') { presentCount++; badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'; displayStatus = 'Present'; }
+                    if (status === 'Absent') { badgeColor = 'bg-red-500/20 text-red-300 border-red-500/30'; displayStatus = 'Absent'; }
+                    if (status === 'Excused') { badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30'; displayStatus = 'Excused'; }
+                }
+
+                attGrid.innerHTML += `
+                    <div class="bg-indigo-900/30 border border-indigo-800/40 p-2 rounded-xl text-center">
+                        <p class="text-[10px] text-indigo-300 font-bold mb-1">${month}/${d}</p>
+                        <span class="inline-block text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${badgeColor}">${displayStatus}</span>
+                    </div>
+                `;
+            }
+
+            const rate = totalRecordedDays > 0 ? Math.round((presentCount / totalRecordedDays) * 100) : 0;
+            document.getElementById('stud-att-rate').innerText = `${rate}%`;
+        }
+
+        function renderRadarChart(scores) {
+            const ctx = document.getElementById('studentRadarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Prelim', 'Midterm', 'Semi-Finals', 'Finals', 'Overall'],
+                    datasets: [{
+                        label: 'Score',
+                        data: [...scores, (scores.reduce((a,b)=>a+b,0)/4)],
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#f59e0b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            angleLines: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { display: false, max: 100 }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        async function enterTeacherDashboard() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-teacher').classList.remove('hidden');
+            document.getElementById('user-nav-area').classList.remove('hidden');
+            document.getElementById('nav-user-name').innerText = currentUser.full_name;
+            document.getElementById('nav-user-role').innerText = `Faculty ID: ${currentUser.employee_id}`;
+
+            document.getElementById('teach-welcome-name').innerText = `Welcome, ${currentUser.full_name}`;
+            document.getElementById('teach-welcome-meta').innerText = `Handling Subject: ${currentUser.assigned_subject} (${currentUser.assigned_course} - ${currentUser.assigned_year})`;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('daily-sheet-date').value = todayStr;
+
+            await loadTeacherRoster();
+        }
+
+        function switchTeacherTab(tab) {
+            const rosterContent = document.getElementById('teacher-content-roster');
+            const attContent = document.getElementById('teacher-content-attendance');
+            const rosterBtn = document.getElementById('teach-tab-roster');
+            const attBtn = document.getElementById('teach-tab-attendance');
+
+            if (tab === 'roster') {
+                rosterContent.classList.remove('hidden');
+                attContent.classList.add('hidden');
+                rosterBtn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition shadow";
+                attBtn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-900/50 text-indigo-300 hover:text-white transition border border-indigo-800/40";
+            } else {
+                rosterContent.classList.add('hidden');
+                attContent.classList.remove('hidden');
+                attBtn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition shadow";
+                rosterBtn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-900/50 text-indigo-300 hover:text-white transition border border-indigo-800/40";
+                renderDailyAttendanceSheet();
+            }
+        }
+
+        async function loadTeacherRoster() {
+            toggleLoader(true);
+            try {
+                const { data, error } = await supabaseClient
+                    .from('icct_students')
+                    .select('*')
+                    .eq('teacher_name', currentUser.full_name)
+                    .order('full_name', { ascending: true });
+
+                toggleLoader(false);
+                if (error) throw error;
+                allStudentsCache = data || [];
+                displayTeacherRoster(allStudentsCache);
+                updateTeacherMetrics(allStudentsCache);
+            } catch (err) {
+                toggleLoader(false);
+                showToast("Failed to fetch assigned roster.", "error");
+            }
+        }
+
+        function calculateAttendanceStats(attendanceObj) {
+            const attData = attendanceObj || {};
+            let present = 0;
+            let total = 0;
+            for (let date in attData) {
+                total++;
+                if (attData[date] === 'Present') present++;
+            }
+            const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+            return { rate, total };
+        }
+
+        function updateTeacherMetrics(students) {
+            document.getElementById('teach-total-students').innerText = students.length;
+            if (students.length === 0) {
+                document.getElementById('teach-avg-attendance').innerText = '0%';
+                return;
+            }
+            let totalRateSum = 0;
+            students.forEach(s => {
+                const { rate } = calculateAttendanceStats(s.attendance);
+                totalRateSum += rate;
+            });
+            const avgRate = Math.round(totalRateSum / students.length);
+            document.getElementById('teach-avg-attendance').innerText = `${avgRate}%`;
+        }
+
+        function displayTeacherRoster(students) {
+            const tbody = document.getElementById('teacher-roster-tbody');
+            tbody.innerHTML = '';
+
+            if (students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-indigo-400">No students found under your assigned class/subject.</td></tr>`;
+                return;
+            }
+
+            students.forEach(stud => {
+                const { rate, total } = calculateAttendanceStats(stud.attendance);
+                let badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                if (rate < 75 && total > 0) badgeClass = 'bg-red-500/20 text-red-300 border-red-500/30';
+                else if (total === 0) badgeClass = 'bg-slate-800/40 text-slate-400 border-slate-700/40';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-indigo-900/20 transition border-b border-indigo-900/30">
+                        <td class="p-3 font-bold text-white">${stud.full_name}</td>
+                        <td class="p-3 text-indigo-300">${stud.course} (${stud.year_level})</td>
+                        <td class="p-3 text-amber-400 font-semibold">${stud.subject}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}">${rate}% (${total} days)</span>
+                        </td>
+                        <td class="p-3">${stud.prelim}</td>
+                        <td class="p-3">${stud.midterm}</td>
+                        <td class="p-3">${stud.semi_finals}</td>
+                        <td class="p-3">${stud.finals}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="openEditModal('${stud.id}')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 p-2 rounded-lg border border-amber-500/30 transition" title="Edit Grades">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterTeacherRoster() {
+            const query = document.getElementById('teacher-search').value.toLowerCase();
+            const filtered = allStudentsCache.filter(s => s.full_name.toLowerCase().includes(query));
+            displayTeacherRoster(filtered);
+        }
+
+        function renderDailyAttendanceSheet() {
+            const tbody = document.getElementById('daily-attendance-sheet-tbody');
+            const dateVal = document.getElementById('daily-sheet-date').value;
+            tbody.innerHTML = '';
+
+            if (allStudentsCache.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-indigo-400">No students loaded.</td></tr>`;
+                return;
+            }
+
+            allStudentsCache.forEach(stud => {
+                const attData = stud.attendance || {};
+                const currentStatus = attData[dateVal] || 'Present';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-indigo-900/20 transition border-b border-indigo-900/30">
+                        <td class="p-3 font-bold text-white">${stud.full_name}</td>
+                        <td class="p-3 text-indigo-300">${stud.course} (${stud.year_level})</td>
+                        <td class="p-3 text-center">
+                            <div class="inline-flex rounded-xl bg-indigo-900/50 p-1 border border-indigo-800/40 gap-1">
+                                <button type="button" onclick="setDailyStatus('${stud.id}', 'Present')" id="btn-p-${stud.id}" class="px-3 py-1 text-xs font-bold rounded-lg transition ${currentStatus === 'Present' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-indigo-300 hover:text-white'}">Present</button>
+                                <button type="button" onclick="setDailyStatus('${stud.id}', 'Absent')" id="btn-a-${stud.id}" class="px-3 py-1 text-xs font-bold rounded-lg transition ${currentStatus === 'Absent' ? 'bg-red-500 text-white shadow' : 'text-indigo-300 hover:text-white'}">Absent</button>
+                                <button type="button" onclick="setDailyStatus('${stud.id}', 'Excused')" id="btn-e-${stud.id}" class="px-3 py-1 text-xs font-bold rounded-lg transition ${currentStatus === 'Excused' ? 'bg-amber-500 text-slate-950 shadow' : 'text-indigo-300 hover:text-white'}">Excused</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function setDailyStatus(id, status) {
+            const stud = allStudentsCache.find(s => s.id == id);
+            if (!stud) return;
+            if (!stud.attendance) stud.attendance = {};
+            const dateVal = document.getElementById('daily-sheet-date').value;
+            stud.attendance[dateVal] = status;
+
+            // Re-highlight buttons inline
+            document.getElementById(`btn-p-${id}`).className = `px-3 py-1 text-xs font-bold rounded-lg transition ${status === 'Present' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-indigo-300 hover:text-white'}`;
+            document.getElementById(`btn-a-${id}`).className = `px-3 py-1 text-xs font-bold rounded-lg transition ${status === 'Absent' ? 'bg-red-500 text-white shadow' : 'text-indigo-300 hover:text-white'}`;
+            document.getElementById(`btn-e-${id}`).className = `px-3 py-1 text-xs font-bold rounded-lg transition ${status === 'Excused' ? 'bg-amber-500 text-slate-950 shadow' : 'text-indigo-300 hover:text-white'}`;
+        }
+
+        async function saveBulkAttendanceSheet() {
+            toggleLoader(true);
+            try {
+                for (let stud of allStudentsCache) {
+                    await supabaseClient
+                        .from('icct_students')
+                        .update({ attendance: stud.attendance })
+                        .eq('id', stud.id);
+                }
+                toggleLoader(false);
+                showToast("Daily attendance sheet saved successfully! Reflected for all students.");
+                loadTeacherRoster();
+            } catch (err) {
+                toggleLoader(false);
+                showToast("Failed to save daily attendance records.", "error");
+            }
+        }
+
+        function openEditModal(id) {
+            const stud = allStudentsCache.find(s => s.id == id);
+            if (!stud) return;
+            document.getElementById('edit-stud-id').value = stud.id;
+            document.getElementById('edit-prelim').value = stud.prelim;
+            document.getElementById('edit-midterm').value = stud.midterm;
+            document.getElementById('edit-semi').value = stud.semi_finals;
+            document.getElementById('edit-finals').value = stud.finals;
+            document.getElementById('edit-remarks').value = stud.remarks || '';
+            document.getElementById('modal-edit-student').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('modal-edit-student').classList.add('hidden');
+        }
+
+        async function saveStudentRecord(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-stud-id').value;
+            const updated = {
+                prelim: parseFloat(document.getElementById('edit-prelim').value) || 0,
+                midterm: parseFloat(document.getElementById('edit-midterm').value) || 0,
+                semi_finals: parseFloat(document.getElementById('edit-semi').value) || 0,
+                finals: parseFloat(document.getElementById('edit-finals').value) || 0,
+                remarks: document.getElementById('edit-remarks').value
+            };
+
+            toggleLoader(true);
+            const { error } = await supabaseClient.from('icct_students').update(updated).eq('id', id);
+            toggleLoader(false);
+
+            if (error) {
+                showToast("Failed to update student grades.", "error");
+            } else {
+                showToast("Student grades updated successfully.");
+                closeEditModal();
+                loadTeacherRoster();
+            }
+            return false;
+        }
+    </script>
+</body>
+</html>
